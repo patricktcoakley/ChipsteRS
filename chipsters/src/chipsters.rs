@@ -1,11 +1,11 @@
-use std::{env, path::Path, process::exit};
+use std::{path::Path, process::exit};
 
 use macroquad::{
     color::{BLACK, WHITE},
-    miniquad::{KeyCode, window::set_window_size},
+    miniquad::{window::set_window_size, KeyCode},
     shapes::draw_rectangle,
     text::{draw_text_ex, TextParams},
-    window::{clear_background, request_new_screen_size, screen_height, screen_width},
+    window::{clear_background, next_frame, request_new_screen_size, screen_height, screen_width},
 };
 
 pub struct ChipsteRS {
@@ -28,12 +28,10 @@ impl ChipsteRS {
         KeyCode::F,
     ];
 
-    pub fn new() -> Self {
-        let args: Vec<String> = env::args().collect();
-
+    pub fn new(args: Vec<String>) -> Self {
         let mut c = chip8::Chip8::new();
-        if let Some(rom_path) = Self::get_rom_path(&args) {
-            c.load_rom(rom_path).unwrap_or_else(|e| {
+        if let Some(rom) = Self::validate_rom_path(&args) {
+            c.load_rom(rom).unwrap_or_else(|e| {
                 println!("Error loading ROM at path {}", e);
                 exit(1);
             });
@@ -46,7 +44,7 @@ impl ChipsteRS {
         return Self { chip8: c };
     }
 
-    fn get_rom_path(args: &[String]) -> Option<&Path> {
+    fn validate_rom_path(args: &Vec<String>) -> Option<&Path> {
         match args.len() {
             2 => {
                 let rom_path = Path::new(&args[1]);
@@ -102,7 +100,7 @@ impl ChipsteRS {
         }
     }
 
-    pub fn draw(&mut self) {
+    pub async fn draw(&mut self) {
         clear_background(BLACK);
         if self.chip8.state == chip8::state::State::Paused {
             draw_text_ex(
@@ -116,7 +114,7 @@ impl ChipsteRS {
                     ..Default::default()
                 },
             );
-            return;
+            return next_frame().await;
         }
 
         let pixel_size = ((screen_width() / chip8::VIDEO_HEIGHT as f32) * 0.5).floor();
@@ -136,6 +134,8 @@ impl ChipsteRS {
         }
 
         self.chip8.reset_keys();
+
+        next_frame().await;
     }
 
     pub fn should_run(&self) -> bool {

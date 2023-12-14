@@ -2,7 +2,7 @@ use std::{env, path::Path, process::exit};
 
 use macroquad::{
     color::{BLACK, WHITE},
-    miniquad::{window::set_window_size, KeyCode},
+    miniquad::{KeyCode, window::set_window_size},
     shapes::draw_rectangle,
     text::{draw_text_ex, TextParams},
     window::{clear_background, request_new_screen_size, screen_height, screen_width},
@@ -66,17 +66,17 @@ impl ChipsteRS {
     pub fn handle_input(&mut self) {
         if let Some(key) = macroquad::input::get_last_key_pressed() {
             match key {
-                macroquad::miniquad::KeyCode::Escape => {
+                KeyCode::Escape => {
                     self.chip8.state = chip8::state::State::Off;
                 }
-                macroquad::miniquad::KeyCode::Space => {
+                KeyCode::Space => {
                     self.chip8.state = match self.chip8.state {
                         chip8::state::State::Running => chip8::state::State::Paused,
                         chip8::state::State::Paused => chip8::state::State::Running,
                         _ => chip8::state::State::Finished,
                     };
                 }
-                macroquad::miniquad::KeyCode::F1 => {
+                KeyCode::F1 => {
                     self.chip8.reset();
                 }
                 _ => {}

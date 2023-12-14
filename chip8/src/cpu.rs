@@ -1,14 +1,14 @@
 use log::{debug, warn};
 
-use crate::{CHAR_SIZE, Memory, PROGRAM_START_ADDRESS, VIDEO_HEIGHT, VIDEO_WIDTH};
+use crate::{Memory, CHAR_SIZE, PROGRAM_START_ADDRESS, VIDEO_HEIGHT, VIDEO_WIDTH};
 
+#[derive(Debug)]
 pub struct Cpu {
     pub i: u16,
     pub pc: u16,
     pub sp: u8,
     pub dt: u8,
     pub st: u8,
-    pub program_size: i32,
     pub stack: [u16; 16],
     pub registers: [u8; 16],
 }
@@ -21,11 +21,11 @@ impl Cpu {
             sp: 0,
             dt: 0,
             st: 0,
-            program_size: 0,
             stack: [0; 16],
             registers: [0; 16],
         }
     }
+
     pub fn execute(&mut self, opcode: u16, mem: &mut Memory) {
         self.sne();
         let c = (opcode & 0xF000) >> 12;

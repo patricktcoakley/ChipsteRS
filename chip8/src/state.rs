@@ -2,6 +2,6 @@
 pub enum State {
     Running,
     Paused,
-    Stopped,
+    Finished,
+    Off,
 }
-

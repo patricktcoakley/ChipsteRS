@@ -3,10 +3,10 @@ use cpu::Cpu;
 use memory::Memory;
 pub use state::State;
 
-pub mod state;
 pub mod chip8;
 mod cpu;
 mod memory;
+pub mod state;
 
 pub const VIDEO_HEIGHT: u8 = 0x20;
 pub const VIDEO_WIDTH: u8 = 0x40;

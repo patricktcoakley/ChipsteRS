@@ -1,4 +1,4 @@
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
 
 const FONTS: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0

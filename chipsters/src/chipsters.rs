@@ -2,14 +2,20 @@ use std::{path::Path, process::exit};
 
 use macroquad::{
     color::{BLACK, WHITE},
-    miniquad::{KeyCode, window::set_window_size},
-    shapes::draw_rectangle,
+    miniquad::{KeyCode, window::set_window_size}
+    ,
     text::{draw_text_ex, TextParams},
     window::{clear_background, next_frame, request_new_screen_size, screen_height, screen_width},
 };
+use macroquad::prelude::{draw_texture_ex, Vec2};
+use macroquad::texture::{draw_texture, FilterMode, Image, Texture2D};
+
+use chip8::State::Running;
 
 pub struct ChipsteRS {
     pub chip8: chip8::Chip8,
+    buffer: Image,
+    texture: Texture2D,
 }
 
 impl ChipsteRS {
@@ -34,6 +40,7 @@ impl ChipsteRS {
 
     pub fn new(rom_path: &Path) -> Self {
         let mut c = chip8::Chip8::new();
+
         if let Some(rom) = Self::validate_rom_path(rom_path) {
             c.load_rom(rom).unwrap_or_else(|e| {
                 println!("Error loading ROM at path {}", e);
@@ -45,7 +52,15 @@ impl ChipsteRS {
 
         set_window_size(1200, 600);
         request_new_screen_size(1200., 600.);
-        return Self { chip8: c };
+        let buffer = Image::gen_image_color(chip8::VIDEO_WIDTH as u16, chip8::VIDEO_HEIGHT as u16, BLACK);
+        let mut texture = Texture2D::from_image(&buffer);
+        texture.set_filter(FilterMode::Nearest);
+
+        Self {
+            chip8: c,
+            buffer,
+            texture,
+        }
     }
 
     fn validate_rom_path(rom_path: &Path) -> Option<&Path> {
@@ -94,11 +109,24 @@ impl ChipsteRS {
             }
             _ => return,
         }
+
+        let pixel_size = ((screen_width() / chip8::VIDEO_HEIGHT as f32) * 0.5).floor();
+
+        for y in 0..chip8::VIDEO_HEIGHT {
+            for x in 0..chip8::VIDEO_WIDTH {
+                if self.chip8.has_color(x, y) {
+                    self.buffer.set_pixel(x as u32, y as u32, WHITE);
+                } else {
+                    self.buffer.set_pixel(x as u32, y as u32, BLACK);
+                }
+            }
+        }
     }
 
     pub async fn draw(&mut self) {
         clear_background(BLACK);
-        if self.chip8.state == chip8::state::State::Paused {
+
+        if self.chip8.state == chip8::State::Paused {
             draw_text_ex(
                 "Paused",
                 screen_width() / 2.0 - 100.0,
@@ -110,24 +138,21 @@ impl ChipsteRS {
                     ..Default::default()
                 },
             );
-
-            next_frame().await
-        }
-
-        let pixel_size = ((screen_width() / chip8::VIDEO_HEIGHT as f32) * 0.5).floor();
-
-        for y in 0..chip8::VIDEO_HEIGHT {
-            for x in 0..chip8::VIDEO_WIDTH {
-                if self.chip8.has_color(x, y) {
-                    draw_rectangle(
-                        x as f32 * pixel_size,
-                        y as f32 * pixel_size,
-                        pixel_size,
-                        pixel_size,
-                        WHITE,
-                    );
-                }
-            }
+        } else if self.chip8.state == Running {
+            self.texture.update(&self.buffer);
+            draw_texture_ex(
+                &self.texture,
+                0.0,
+                0.0,
+                WHITE,
+                macroquad::texture::DrawTextureParams {
+                    dest_size: Some(Vec2::new(
+                        screen_width(),
+                        screen_height(),
+                    )),
+                    ..Default::default()
+                },
+            );
         }
 
         self.chip8.reset_keys();

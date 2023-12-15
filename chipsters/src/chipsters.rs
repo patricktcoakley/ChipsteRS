@@ -13,7 +13,7 @@ pub struct ChipsteRS {
 }
 
 impl ChipsteRS {
-    const CHIP8_KEYS: [KeyCode; 12] = [
+    const CHIP8_KEYS: [KeyCode; 16] = [
         KeyCode::Key1,
         KeyCode::Key2,
         KeyCode::Key3,
@@ -26,6 +26,10 @@ impl ChipsteRS {
         KeyCode::S,
         KeyCode::D,
         KeyCode::F,
+        KeyCode::Z,
+        KeyCode::X,
+        KeyCode::C,
+        KeyCode::V,
     ];
 
     pub fn new(rom_path: &Path) -> Self {

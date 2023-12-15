@@ -2,7 +2,7 @@ use std::{path::Path, process::exit};
 
 use macroquad::{
     color::{BLACK, WHITE},
-    miniquad::{window::set_window_size, KeyCode},
+    miniquad::{KeyCode, window::set_window_size},
     shapes::draw_rectangle,
     text::{draw_text_ex, TextParams},
     window::{clear_background, next_frame, request_new_screen_size, screen_height, screen_width},
@@ -28,9 +28,9 @@ impl ChipsteRS {
         KeyCode::F,
     ];
 
-    pub fn new(args: Vec<String>) -> Self {
+    pub fn new(rom_path: &Path) -> Self {
         let mut c = chip8::Chip8::new();
-        if let Some(rom) = Self::validate_rom_path(&args) {
+        if let Some(rom) = Self::validate_rom_path(rom_path) {
             c.load_rom(rom).unwrap_or_else(|e| {
                 println!("Error loading ROM at path {}", e);
                 exit(1);
@@ -44,21 +44,13 @@ impl ChipsteRS {
         return Self { chip8: c };
     }
 
-    fn validate_rom_path(args: &Vec<String>) -> Option<&Path> {
-        match args.len() {
-            2 => {
-                let rom_path = Path::new(&args[1]);
-                if rom_path.exists() && rom_path.is_file() {
-                    return Some(rom_path);
-                } else {
-                    println!("{} is not a valid file", rom_path.display());
-                }
-            }
-            _ => {
-                println!("Usage: chipsters <rom_path>");
-            }
+    fn validate_rom_path(rom_path: &Path) -> Option<&Path> {
+        if rom_path.exists() && rom_path.is_file() {
+            return Some(rom_path);
+        } else {
+            println!("{} is not a valid file", rom_path.display());
+            None
         }
-        None
     }
 
     pub fn handle_input(&mut self) {
@@ -114,7 +106,8 @@ impl ChipsteRS {
                     ..Default::default()
                 },
             );
-            return next_frame().await;
+
+            next_frame().await
         }
 
         let pixel_size = ((screen_width() / chip8::VIDEO_HEIGHT as f32) * 0.5).floor();

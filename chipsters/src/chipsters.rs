@@ -1,14 +1,13 @@
 use std::{path::Path, process::exit};
 
+use macroquad::prelude::{draw_texture_ex, Vec2};
+use macroquad::texture::{draw_texture, FilterMode, Image, Texture2D};
 use macroquad::{
     color::{BLACK, WHITE},
-    miniquad::{KeyCode, window::set_window_size}
-    ,
+    miniquad::{window::set_window_size, KeyCode},
     text::{draw_text_ex, TextParams},
     window::{clear_background, next_frame, request_new_screen_size, screen_height, screen_width},
 };
-use macroquad::prelude::{draw_texture_ex, Vec2};
-use macroquad::texture::{draw_texture, FilterMode, Image, Texture2D};
 
 use chip8::State::Running;
 
@@ -52,7 +51,8 @@ impl ChipsteRS {
 
         set_window_size(1200, 600);
         request_new_screen_size(1200., 600.);
-        let buffer = Image::gen_image_color(chip8::VIDEO_WIDTH as u16, chip8::VIDEO_HEIGHT as u16, BLACK);
+        let buffer =
+            Image::gen_image_color(chip8::VIDEO_WIDTH as u16, chip8::VIDEO_HEIGHT as u16, BLACK);
         let mut texture = Texture2D::from_image(&buffer);
         texture.set_filter(FilterMode::Nearest);
 
@@ -146,10 +146,7 @@ impl ChipsteRS {
                 0.0,
                 WHITE,
                 macroquad::texture::DrawTextureParams {
-                    dest_size: Some(Vec2::new(
-                        screen_width(),
-                        screen_height(),
-                    )),
+                    dest_size: Some(Vec2::new(screen_width(), screen_height())),
                     ..Default::default()
                 },
             );

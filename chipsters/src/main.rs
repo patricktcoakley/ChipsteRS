@@ -1,5 +1,5 @@
-use std::{env, process::exit};
 use std::path::Path;
+use std::{env, process::exit};
 
 #[macroquad::main("ChipsteRS")]
 async fn main() {
@@ -13,7 +13,7 @@ async fn main() {
             exit(1);
         }
     };
-    
+
     let mut chipsters = chipsters::ChipsteRS::new(rom_path);
 
     while chipsters.should_run() {

@@ -1,5 +1,7 @@
-use std::path::Path;
 use std::{env, process::exit};
+use std::path::Path;
+
+use chipsters::ChipsteRS;
 
 #[macroquad::main("ChipsteRS")]
 async fn main() {
@@ -14,7 +16,7 @@ async fn main() {
         }
     };
 
-    let mut chipsters = chipsters::ChipsteRS::new(rom_path);
+    let mut chipsters = ChipsteRS::new(rom_path);
 
     while chipsters.should_run() {
         chipsters.handle_input();

@@ -1,18 +1,12 @@
 use std::{path::Path, process::exit};
 
-use macroquad::prelude::{draw_texture_ex, Vec2};
-use macroquad::texture::{draw_texture, FilterMode, Image, Texture2D};
-use macroquad::{
-    color::{BLACK, WHITE},
-    miniquad::{window::set_window_size, KeyCode},
-    text::{draw_text_ex, TextParams},
-    window::{clear_background, next_frame, request_new_screen_size, screen_height, screen_width},
-};
+use macroquad::miniquad::window::set_window_size;
+use macroquad::prelude::*;
 
-use chip8::State::Running;
+use chip8::Chip8;
 
 pub struct ChipsteRS {
-    pub chip8: chip8::Chip8,
+    pub chip8: Chip8,
     buffer: Image,
     texture: Texture2D,
 }
@@ -38,7 +32,7 @@ impl ChipsteRS {
     ];
 
     pub fn new(rom_path: &Path) -> Self {
-        let mut c = chip8::Chip8::new();
+        let mut c = Chip8::new();
 
         if let Some(rom) = Self::validate_rom_path(rom_path) {
             c.load_rom(rom).unwrap_or_else(|e| {
@@ -53,7 +47,7 @@ impl ChipsteRS {
         request_new_screen_size(1200., 600.);
         let buffer =
             Image::gen_image_color(chip8::VIDEO_WIDTH as u16, chip8::VIDEO_HEIGHT as u16, BLACK);
-        let mut texture = Texture2D::from_image(&buffer);
+        let texture = Texture2D::from_image(&buffer);
         texture.set_filter(FilterMode::Nearest);
 
         Self {
@@ -73,16 +67,16 @@ impl ChipsteRS {
     }
 
     pub fn handle_input(&mut self) {
-        if let Some(key) = macroquad::input::get_last_key_pressed() {
+        if let Some(key) = get_last_key_pressed() {
             match key {
                 KeyCode::Escape => {
-                    self.chip8.state = chip8::state::State::Off;
+                    self.chip8.state = chip8::State::Off;
                 }
                 KeyCode::Space => {
                     self.chip8.state = match self.chip8.state {
-                        chip8::state::State::Running => chip8::state::State::Paused,
-                        chip8::state::State::Paused => chip8::state::State::Running,
-                        _ => chip8::state::State::Finished,
+                        chip8::State::Running => chip8::State::Paused,
+                        chip8::State::Paused => chip8::State::Running,
+                        _ => chip8::State::Finished,
                     };
                 }
                 KeyCode::F1 => {
@@ -93,14 +87,14 @@ impl ChipsteRS {
         }
 
         for (i, key) in Self::CHIP8_KEYS.iter().enumerate() {
-            if macroquad::input::is_key_down(*key) {
+            if is_key_down(*key) {
                 self.chip8.key_down(i);
             }
         }
     }
 
     pub fn update(&mut self) {
-        match self.chip8.state {
+        match &self.chip8.state {
             chip8::State::Finished => self.chip8.reset(),
             chip8::State::Running => {
                 for _i in 0..5 {
@@ -109,8 +103,6 @@ impl ChipsteRS {
             }
             _ => return,
         }
-
-        let pixel_size = ((screen_width() / chip8::VIDEO_HEIGHT as f32) * 0.5).floor();
 
         for y in 0..chip8::VIDEO_HEIGHT {
             for x in 0..chip8::VIDEO_WIDTH {
@@ -138,14 +130,14 @@ impl ChipsteRS {
                     ..Default::default()
                 },
             );
-        } else if self.chip8.state == Running {
+        } else if self.chip8.state == chip8::State::Running {
             self.texture.update(&self.buffer);
             draw_texture_ex(
                 &self.texture,
                 0.0,
                 0.0,
                 WHITE,
-                macroquad::texture::DrawTextureParams {
+                DrawTextureParams {
                     dest_size: Some(Vec2::new(screen_width(), screen_height())),
                     ..Default::default()
                 },
@@ -154,10 +146,10 @@ impl ChipsteRS {
 
         self.chip8.reset_keys();
 
-        next_frame().await;
+        next_frame().await
     }
 
     pub fn should_run(&self) -> bool {
-        self.chip8.state != chip8::state::State::Off
+        self.chip8.state != chip8::State::Off
     }
 }

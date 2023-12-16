@@ -1,2 +1,3 @@
-pub use chipsters::*;
+pub use chipsters::ChipsteRS;
+
 mod chipsters;

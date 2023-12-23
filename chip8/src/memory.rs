@@ -1,5 +1,3 @@
-use rand::{thread_rng, Rng};
-
 const FONTS: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
     0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -24,7 +22,6 @@ pub struct Memory {
     pub ram: [u8; 4096],
     pub keypad: [bool; 16],
     pub video: [u8; 2048],
-    rng: rand::rngs::ThreadRng,
 }
 
 impl Memory {
@@ -36,11 +33,10 @@ impl Memory {
             ram,
             keypad: [false; 16],
             video: [0; 2048],
-            rng: thread_rng(),
         }
     }
 
     pub fn rand_byte(&mut self) -> u8 {
-        self.rng.gen::<u8>()
+        fastrand::u8(..=u8::MAX)
     }
 }

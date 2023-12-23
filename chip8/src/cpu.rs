@@ -170,7 +170,7 @@ impl Cpu {
         debug!("8XY4: ADD Vx, Vy - Set Vx = Vx + Vy, Set VF = carry");
 
         let (result, updated_vf) = self.registers[x].overflowing_add(self.registers[y]);
-        self.registers[x] = result & 0xFF;
+        self.registers[x] = result;
         self.registers[0xF] = updated_vf.into()
     }
 
@@ -241,8 +241,8 @@ impl Cpu {
 
             for display_x in 0..8 {
                 if pixel & (0x80 >> display_x) != 0 {
-                    let x_pos = (self.registers[x] + display_x) % VIDEO_WIDTH;
-                    let y_pos = (self.registers[y] + display_y as u8) % VIDEO_HEIGHT;
+                    let x_pos = self.registers[x].overflowing_add(display_x).0 % VIDEO_WIDTH;
+                    let y_pos = self.registers[y].overflowing_add(display_y as u8).0 % VIDEO_HEIGHT;
                     let pixel_pos = (y_pos as u16 * VIDEO_WIDTH as u16 + x_pos as u16) as usize;
                     collision = (mem.video[pixel_pos] == 0x1).into();
                     mem.video[pixel_pos] ^= 0x1

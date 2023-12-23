@@ -19,7 +19,7 @@ impl Chip8 {
         Self {
             memory: Memory::new(),
             cpu: Cpu::new(),
-            state: State::Finished,
+            state: State::Off,
             program_size: 0,
         }
     }

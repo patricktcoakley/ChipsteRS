@@ -1,5 +1,5 @@
-use std::{env, process::exit};
 use std::path::Path;
+use std::{env, process::exit};
 
 use chipsters::ChipsteRS;
 
@@ -16,13 +16,12 @@ async fn main() {
         }
     };
 
-    let mut chipsters = ChipsteRS::new(rom_path);
+    let mut chipsters = ChipsteRS::new();
+    chipsters.load(rom_path);
 
-    while chipsters.should_run() {
+    loop {
         chipsters.handle_input();
         chipsters.update();
         chipsters.draw().await
     }
-
-    exit(0);
 }

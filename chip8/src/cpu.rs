@@ -1,5 +1,8 @@
-use log::{debug, warn};
+use log::{debug, error};
 
+use ExecutionError::InvalidOpcode;
+
+use crate::error::ExecutionError;
 use crate::{Memory, CHAR_SIZE, PROGRAM_START_ADDRESS, VIDEO_HEIGHT, VIDEO_WIDTH};
 
 #[derive(Debug)]
@@ -26,7 +29,7 @@ impl Cpu {
         }
     }
 
-    pub fn execute(&mut self, opcode: u16, mem: &mut Memory) {
+    pub fn execute(&mut self, opcode: u16, mem: &mut Memory) -> Result<(), ExecutionError> {
         self.sne();
         let c = (opcode & 0xF000) >> 12;
         let x = ((opcode & 0x0F00) >> 8) as usize;
@@ -72,9 +75,12 @@ impl Cpu {
             (0xF, _, 0x5, 0x5) => self.op_fx55(mem, x),
             (0xF, _, 0x6, 0x5) => self.op_fx65(mem, x),
             _ => {
-                warn!("Unknown opcode {opcode}");
+                error!("Unknown opcode {opcode}");
+                return Err(InvalidOpcode(opcode));
             }
         }
+
+        Ok(())
     }
 
     fn sne(&mut self) {

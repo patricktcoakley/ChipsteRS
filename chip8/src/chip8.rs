@@ -1,10 +1,12 @@
+use std::path::Path;
+
+use log::info;
+
+use crate::error::ExecutionError;
 use crate::Memory;
 use crate::State;
 use crate::PROGRAM_START_ADDRESS;
 use crate::{Cpu, VIDEO_WIDTH};
-
-use log::info;
-use std::path::Path;
 
 #[derive(Debug)]
 pub struct Chip8 {
@@ -45,7 +47,9 @@ impl Chip8 {
 
     pub fn reset(&mut self) {
         self.cpu = Cpu::new();
-        self.cpu.execute(0x00E0, &mut self.memory);
+        self.cpu
+            .execute(0x00E0, &mut self.memory)
+            .expect("failed to reset video");
         self.cpu.pc = PROGRAM_START_ADDRESS;
     }
 
@@ -53,18 +57,17 @@ impl Chip8 {
         self.memory.keypad = [false; 16];
     }
 
-    pub fn step(&mut self) {
-        if self.state != State::Running {
-            return;
-        }
-
+    pub fn step(&mut self) -> Result<(), ExecutionError> {
         if self.cpu.pc >= PROGRAM_START_ADDRESS + self.program_size {
             self.state = State::Finished;
-            return;
+        }
+
+        if self.state != State::Running {
+            return Ok(());
         }
 
         let opcode = self.opcode();
-        self.cpu.execute(opcode, &mut self.memory);
+        self.cpu.execute(opcode, &mut self.memory)?;
 
         if self.cpu.dt > 0 {
             self.cpu.dt -= 1;
@@ -73,6 +76,8 @@ impl Chip8 {
         if self.cpu.st > 0 {
             self.cpu.st -= 1
         }
+
+        Ok(())
     }
     pub fn key_down(&mut self, i: usize) {
         self.memory.keypad[i] = true;

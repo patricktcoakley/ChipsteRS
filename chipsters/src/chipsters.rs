@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::{path::Path, process::exit};
 
+use anyhow::Result;
 use macroquad::miniquad::window::set_window_size;
 use macroquad::prelude::*;
 
@@ -131,12 +132,12 @@ impl ChipsteRS {
         }
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self) -> Result<()> {
         match &self.chip8.state {
             chip8::State::Finished => self.chip8.reset(),
             chip8::State::Running => {
                 for _i in 0..10 {
-                    self.chip8.step();
+                    self.chip8.step()?;
                 }
             }
             chip8::State::Off => {
@@ -165,13 +166,18 @@ impl ChipsteRS {
                             .clone()
                             .unwrap()
                             .join(&rom_titles[self.rom_cursor]);
+
                         self.chip8.load_rom(path).unwrap_or_else(|e| {
-                            println!("Error loading ROM at path {}", e);
+                            panic!(
+                                "Error loading ROM at path {}:  {}",
+                                path.to_string_lossy(),
+                                e
+                            );
                         });
                     }
                 }
             }
-            _ => return,
+            _ => {}
         }
 
         let mut color: Color;
@@ -186,6 +192,8 @@ impl ChipsteRS {
                 self.buffer.set_pixel(x as u32, y as u32, color);
             }
         }
+
+        Ok(())
     }
 
     pub async fn draw(&mut self) {

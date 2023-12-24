@@ -7,4 +7,4 @@ edition = "2021"
 macroquad = "0.4"
 chip8 = { path = "../chip8" }
 env_logger = "0.10.1"
-thiserror = "1.0.50"
+anyhow = "1.0.76"

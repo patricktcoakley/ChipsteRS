@@ -21,7 +21,7 @@ async fn main() {
 
     loop {
         chipsters.handle_input();
-        chipsters.update();
+        chipsters.update().expect("failed to update");
         chipsters.draw().await
     }
 }

@@ -138,13 +138,13 @@ impl Cpu {
     fn op_6xkk(&mut self, x: usize, nn: u8) {
         debug!("6XKK: LD Vx, byte - Set Vx = byte");
 
-        self.registers[x] = nn
+        self.registers[x] = nn;
     }
 
     fn op_7xkk(&mut self, x: usize, nn: u8) {
         debug!("7XKK: ADD Vx, byte - Add byte to Vx");
 
-        let result = self.registers[x] as u16 + nn as u16;
+        let result = u16::from(self.registers[x]) + u16::from(nn);
         self.registers[x] = result as u8;
     }
 
@@ -177,7 +177,7 @@ impl Cpu {
 
         let (result, updated_vf) = self.registers[x].overflowing_add(self.registers[y]);
         self.registers[x] = result;
-        self.registers[0xF] = updated_vf.into()
+        self.registers[0xF] = updated_vf.into();
     }
 
     fn op_8xy5(&mut self, x: usize, y: usize) {
@@ -229,7 +229,7 @@ impl Cpu {
     fn op_bnnn(&mut self, nnn: u16) {
         debug!("BNNN: JP V0, addr - Jump to address V0 + addr");
 
-        self.pc = self.registers[nnn as usize] as u16;
+        self.pc = u16::from(self.registers[nnn as usize]);
     }
 
     fn op_cxkk(&mut self, mem: &mut Memory, x: usize, nn: u8) {
@@ -249,14 +249,14 @@ impl Cpu {
                 if pixel & (0x80 >> display_x) != 0 {
                     let x_pos = self.registers[x].overflowing_add(display_x).0 % VIDEO_WIDTH;
                     let y_pos = self.registers[y].overflowing_add(display_y as u8).0 % VIDEO_HEIGHT;
-                    let pixel_pos = (y_pos as u16 * VIDEO_WIDTH as u16 + x_pos as u16) as usize;
+                    let pixel_pos = (u16::from(y_pos) * u16::from(VIDEO_WIDTH) + u16::from(x_pos)) as usize;
                     collision = (mem.video[pixel_pos] == 0x1).into();
-                    mem.video[pixel_pos] ^= 0x1
+                    mem.video[pixel_pos] ^= 0x1;
                 }
             }
         }
 
-        self.registers[0xF] = collision
+        self.registers[0xF] = collision;
     }
 
     fn op_ex9e(&mut self, mem: &mut Memory, x: usize) {
@@ -336,13 +336,13 @@ impl Cpu {
     fn op_fx1e(&mut self, x: usize) {
         debug!("FX1E: Add I, Vx - Set I = I + Vx");
 
-        self.i += self.registers[x] as u16;
+        self.i += u16::from(self.registers[x]);
     }
 
     fn op_fx29(&mut self, x: usize) {
         debug!("FX29: LD F, Vx - Set I = location of sprite for digit Vx");
 
-        self.i = CHAR_SIZE as u16 * self.registers[x] as u16;
+        self.i = u16::from(CHAR_SIZE) * u16::from(self.registers[x]);
     }
 
     fn op_fx33(&mut self, mem: &mut Memory, x: usize) {
@@ -359,7 +359,7 @@ impl Cpu {
         debug!("FX55: LD [I], Vx - Store V0~Vx in memory starting at location I");
 
         for offset in 0..=x {
-            mem.ram[self.i as usize + offset] = self.registers[offset]
+            mem.ram[self.i as usize + offset] = self.registers[offset];
         }
     }
 

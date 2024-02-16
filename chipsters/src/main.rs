@@ -16,12 +16,12 @@ async fn main() {
         }
     };
 
-    let mut chipsters = ChipsteRS::new();
+    let mut chipsters = ChipsteRS::default();
     chipsters.load(rom_path);
 
     loop {
         chipsters.handle_input();
         chipsters.update().expect("failed to update");
-        chipsters.draw().await
+        chipsters.draw().await;
     }
 }

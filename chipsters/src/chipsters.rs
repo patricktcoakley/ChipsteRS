@@ -37,13 +37,13 @@ impl ChipsteRS {
         KeyCode::V,
     ];
 
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         request_new_screen_size(1200., 600.);
         set_window_size(1200, 600);
 
         let chip8 = Chip8::new();
         let buffer =
-            Image::gen_image_color(chip8::VIDEO_WIDTH as u16, chip8::VIDEO_HEIGHT as u16, BLACK);
+            Image::gen_image_color(u16::from(chip8::VIDEO_WIDTH), u16::from(chip8::VIDEO_HEIGHT), BLACK);
         let texture = Texture2D::from_image(&buffer);
         texture.set_filter(FilterMode::Nearest);
 
@@ -73,7 +73,7 @@ impl ChipsteRS {
             );
         } else {
             self.chip8.load_rom(rom_path).unwrap_or_else(|e| {
-                println!("Error loading ROM at path {}", e);
+                println!("Error loading ROM at path {e}");
             });
         }
     }
@@ -189,7 +189,7 @@ impl ChipsteRS {
                 } else {
                     BLACK
                 };
-                self.buffer.set_pixel(x as u32, y as u32, color);
+                self.buffer.set_pixel(u32::from(x), u32::from(y), color);
             }
         }
 
@@ -230,6 +230,12 @@ impl ChipsteRS {
 
         self.chip8.reset_keys();
 
-        next_frame().await
+        next_frame().await;
+    }
+}
+
+impl Default for ChipsteRS {
+    fn default() -> Self {
+        Self::new()
     }
 }

@@ -74,7 +74,7 @@ impl Chip8 {
         }
 
         if self.cpu.st > 0 {
-            self.cpu.st -= 1
+            self.cpu.st -= 1;
         }
 
         Ok(())
@@ -88,8 +88,8 @@ impl Chip8 {
     }
 
     fn opcode(&self) -> u16 {
-        (self.memory.ram[self.cpu.pc as usize] as u16) << 8
-            | (self.memory.ram[(self.cpu.pc + 1) as usize] as u16)
+        u16::from(self.memory.ram[self.cpu.pc as usize]) << 8
+            | u16::from(self.memory.ram[(self.cpu.pc + 1) as usize])
     }
 }
 

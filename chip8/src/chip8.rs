@@ -2,7 +2,7 @@ use std::path::Path;
 
 use log::info;
 
-use crate::error::ExecutionError;
+use crate::error::{ExecutionError, LoadError};
 use crate::Memory;
 use crate::State;
 use crate::PROGRAM_START_ADDRESS;
@@ -26,31 +26,34 @@ impl Chip8 {
         }
     }
 
-    pub fn load_rom(&mut self, rom_path: &Path) -> Result<(), std::io::Error> {
-        let rom = std::fs::read(rom_path)?;
-        self.program_size = rom.len() as u16;
+    pub fn load_rom(&mut self, rom_path: &Path) -> Result<(), LoadError> {
+        match std::fs::read(rom_path) {
+            Ok(rom) => {
+                self.program_size = rom.len() as u16;
 
-        if rom.len() > 0x1000 - PROGRAM_START_ADDRESS as usize {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("ROM is too big to fit in memory: {} bytes", rom.len()),
-            ));
+                if rom.len() > 0x1000 - PROGRAM_START_ADDRESS as usize {
+                    return Err(LoadError::TooLarge { length: rom.len() });
+                }
+
+                info!("Loading {}", rom_path.display());
+                self.memory.ram[PROGRAM_START_ADDRESS as usize
+                    ..(PROGRAM_START_ADDRESS + rom.len() as u16) as usize]
+                    .copy_from_slice(&rom);
+                self.state = State::Running;
+                Ok(())
+            }
+
+            Err(_) => Err(LoadError::ReadError {
+                path: rom_path.to_path_buf(),
+            }),
         }
-
-        info!("Loading {}", rom_path.display());
-        self.memory.ram
-            [PROGRAM_START_ADDRESS as usize..(PROGRAM_START_ADDRESS + rom.len() as u16) as usize]
-            .copy_from_slice(&rom);
-        self.state = State::Running;
-        Ok(())
     }
 
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self) -> Result<(), ExecutionError> {
         self.cpu = Cpu::new();
-        self.cpu
-            .execute(0x00E0, &mut self.memory)
-            .expect("failed to reset video");
+        self.cpu.execute(0x00E0, &mut self.memory)?;
         self.cpu.pc = PROGRAM_START_ADDRESS;
+        Ok(())
     }
 
     pub fn reset_keys(&mut self) {

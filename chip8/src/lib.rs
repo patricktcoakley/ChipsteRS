@@ -5,7 +5,7 @@ pub use state::State;
 
 pub mod chip8;
 mod cpu;
-mod error;
+pub mod error;
 mod memory;
 pub mod state;
 

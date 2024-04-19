@@ -1,8 +1,7 @@
 use log::{debug, error};
 
-use ExecutionError::InvalidOpcode;
-
 use crate::error::ExecutionError;
+use crate::error::ExecutionError::InvalidOpcode;
 use crate::{Memory, CHAR_SIZE, PROGRAM_START_ADDRESS, VIDEO_HEIGHT, VIDEO_WIDTH};
 
 #[derive(Debug)]
@@ -249,7 +248,8 @@ impl Cpu {
                 if pixel & (0x80 >> display_x) != 0 {
                     let x_pos = self.registers[x].overflowing_add(display_x).0 % VIDEO_WIDTH;
                     let y_pos = self.registers[y].overflowing_add(display_y as u8).0 % VIDEO_HEIGHT;
-                    let pixel_pos = (u16::from(y_pos) * u16::from(VIDEO_WIDTH) + u16::from(x_pos)) as usize;
+                    let pixel_pos =
+                        (u16::from(y_pos) * u16::from(VIDEO_WIDTH) + u16::from(x_pos)) as usize;
                     collision = (mem.video[pixel_pos] == 0x1).into();
                     mem.video[pixel_pos] ^= 0x1;
                 }

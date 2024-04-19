@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use std::{path::Path, process::exit};
 
-use anyhow::Result;
 use macroquad::miniquad::window::set_window_size;
 use macroquad::prelude::*;
 
@@ -37,13 +36,17 @@ impl ChipsteRS {
         KeyCode::V,
     ];
 
-    #[must_use] pub fn new() -> Self {
+    #[must_use]
+    pub fn new() -> Self {
         request_new_screen_size(1200., 600.);
         set_window_size(1200, 600);
 
         let chip8 = Chip8::new();
-        let buffer =
-            Image::gen_image_color(u16::from(chip8::VIDEO_WIDTH), u16::from(chip8::VIDEO_HEIGHT), BLACK);
+        let buffer = Image::gen_image_color(
+            u16::from(chip8::VIDEO_WIDTH),
+            u16::from(chip8::VIDEO_HEIGHT),
+            BLACK,
+        );
         let texture = Texture2D::from_image(&buffer);
         texture.set_filter(FilterMode::Nearest);
 
@@ -57,7 +60,7 @@ impl ChipsteRS {
         }
     }
 
-    pub fn load<'a>(&'a mut self, rom_path: &'a Path) {
+    pub fn load<'a>(&'a mut self, rom_path: &'a Path) -> anyhow::Result<()> {
         if !rom_path.exists() {
             exit(1)
         }
@@ -71,11 +74,10 @@ impl ChipsteRS {
                     .map(|entry| entry.unwrap().file_name().into_string().unwrap())
                     .collect(),
             );
-        } else {
-            self.chip8.load_rom(rom_path).unwrap_or_else(|e| {
-                println!("Error loading ROM at path {e}");
-            });
+            return Ok(());
         }
+
+        self.chip8.load_rom(rom_path).map_err(anyhow::Error::from)
     }
 
     pub fn draw_menu(&self) {
@@ -100,7 +102,7 @@ impl ChipsteRS {
         }
     }
 
-    pub fn handle_input(&mut self) {
+    pub fn handle_input(&mut self) -> anyhow::Result<()>{
         if let Some(key) = get_last_key_pressed() {
             match key {
                 KeyCode::Escape => {
@@ -108,9 +110,10 @@ impl ChipsteRS {
                         exit(0);
                     }
 
-                    self.chip8.reset();
+                    self.chip8.reset()?;
                     self.chip8.state = chip8::State::Off;
                 }
+
                 KeyCode::Space => {
                     self.chip8.state = match self.chip8.state {
                         chip8::State::Running => chip8::State::Paused,
@@ -118,9 +121,11 @@ impl ChipsteRS {
                         _ => self.chip8.state,
                     }
                 }
+
                 KeyCode::F1 => {
-                    self.chip8.reset();
+                    self.chip8.reset()?;
                 }
+
                 _ => {}
             }
         }
@@ -130,16 +135,33 @@ impl ChipsteRS {
                 self.chip8.key_down(i);
             }
         }
+        
+        Ok(())
     }
 
-    pub fn update(&mut self) -> Result<()> {
+    pub fn update(&mut self) -> anyhow::Result<()> {
         match &self.chip8.state {
-            chip8::State::Finished => self.chip8.reset(),
+            chip8::State::Finished => self.chip8.reset().map_err(anyhow::Error::from),
             chip8::State::Running => {
                 for _i in 0..10 {
                     self.chip8.step()?;
                 }
+
+                let mut color: Color;
+
+                for y in 0..chip8::VIDEO_HEIGHT {
+                    for x in 0..chip8::VIDEO_WIDTH {
+                        color = if self.chip8.has_color(x, y) {
+                            WHITE
+                        } else {
+                            BLACK
+                        };
+                        self.buffer.set_pixel(u32::from(x), u32::from(y), color);
+                    }
+                }
+                Ok(())
             }
+
             chip8::State::Off => {
                 if let Some(rom_titles) = &self.rom_titles {
                     if is_key_pressed(KeyCode::Up) {
@@ -167,36 +189,18 @@ impl ChipsteRS {
                             .unwrap()
                             .join(&rom_titles[self.rom_cursor]);
 
-                        self.chip8.load_rom(path).unwrap_or_else(|e| {
-                            panic!(
-                                "Error loading ROM at path {}:  {}",
-                                path.to_string_lossy(),
-                                e
-                            );
-                        });
+                        self.chip8.load_rom(path)?;
                     }
                 }
+
+                Ok(())
             }
-            _ => {}
+
+            chip8::State::Paused => Ok(()),
         }
-
-        let mut color: Color;
-
-        for y in 0..chip8::VIDEO_HEIGHT {
-            for x in 0..chip8::VIDEO_WIDTH {
-                color = if self.chip8.has_color(x, y) {
-                    WHITE
-                } else {
-                    BLACK
-                };
-                self.buffer.set_pixel(u32::from(x), u32::from(y), color);
-            }
-        }
-
-        Ok(())
     }
 
-    pub async fn draw(&mut self) {
+    pub async fn draw(&mut self) -> anyhow::Result<()> {
         clear_background(BLACK);
 
         match self.chip8.state {
@@ -224,13 +228,15 @@ impl ChipsteRS {
                     ..Default::default()
                 },
             ),
-            chip8::State::Finished => self.chip8.reset(),
+            chip8::State::Finished => self.chip8.reset()?,
             chip8::State::Off => self.draw_menu(),
         }
 
         self.chip8.reset_keys();
 
         next_frame().await;
+
+        Ok(())
     }
 }
 

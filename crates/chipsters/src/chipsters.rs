@@ -1,11 +1,12 @@
-use std::path::PathBuf;
-use std::{path::Path, process::exit};
-
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use macroquad::miniquad::window::set_window_size;
 use macroquad::prelude::*;
+use std::path::PathBuf;
+use std::thread;
+use std::time::Duration;
+use std::{path::Path, process::exit};
 
-use chip8::Chip8;
+use chip8::{get_platform, init_default_platform, Chip8};
 
 #[derive(Debug)]
 pub struct ChipsteRS {
@@ -37,13 +38,18 @@ impl ChipsteRS {
         KeyCode::V,
     ];
 
-    #[must_use] pub fn new() -> Self {
+    #[must_use]
+    pub fn new() -> Self {
         request_new_screen_size(1200., 600.);
         set_window_size(1200, 600);
+        init_default_platform();
 
-        let chip8 = Chip8::new();
-        let buffer =
-            Image::gen_image_color(u16::from(chip8::VIDEO_WIDTH), u16::from(chip8::VIDEO_HEIGHT), BLACK);
+        let chip8 = Chip8::default();
+        let buffer = Image::gen_image_color(
+            get_platform().video_width,
+            get_platform().video_height,
+            BLACK,
+        );
         let texture = Texture2D::from_image(&buffer);
         texture.set_filter(FilterMode::Nearest);
 
@@ -57,9 +63,9 @@ impl ChipsteRS {
         }
     }
 
-    pub fn load<'a>(&'a mut self, rom_path: &'a Path) {
+    pub fn load<'a>(&'a mut self, rom_path: &'a Path) -> Result<()> {
         if !rom_path.exists() {
-            exit(1)
+            return Err(anyhow!("ROM path does not exist: {}", rom_path.display()));
         }
 
         self.rom_path = Some(rom_path.to_path_buf());
@@ -67,15 +73,17 @@ impl ChipsteRS {
             self.rom_titles = Some(
                 rom_path
                     .read_dir()
-                    .unwrap()
-                    .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+                    .map_err(|err| anyhow!("Error reading directory: {}", err))?
+                    .filter_map(|entry| entry.ok().and_then(|e| e.file_name().into_string().ok()))
                     .collect(),
             );
         } else {
-            self.chip8.load_rom(rom_path).unwrap_or_else(|e| {
-                println!("Error loading ROM at path {e}");
-            });
+            self.chip8.load_rom(rom_path).map_err(|err| {
+                anyhow!("Error loading ROM at path {}: {}", rom_path.display(), err)
+            })?;
         }
+
+        Ok(())
     }
 
     pub fn draw_menu(&self) {
@@ -90,7 +98,7 @@ impl ChipsteRS {
                         rom_titles.len(),
                         rom_title
                     )
-                    .as_str(),
+                        .as_str(),
                     screen_width() / 2.0 - 100.0,
                     30. + ((i + 1) as f32 * 30.0),
                     40.0,
@@ -100,7 +108,7 @@ impl ChipsteRS {
         }
     }
 
-    pub fn handle_input(&mut self) {
+    pub fn handle_input(&mut self) -> Result<()> {
         if let Some(key) = get_last_key_pressed() {
             match key {
                 KeyCode::Escape => {
@@ -108,7 +116,7 @@ impl ChipsteRS {
                         exit(0);
                     }
 
-                    self.chip8.reset();
+                    self.chip8.reset()?;
                     self.chip8.state = chip8::State::Off;
                 }
                 KeyCode::Space => {
@@ -119,7 +127,7 @@ impl ChipsteRS {
                     }
                 }
                 KeyCode::F1 => {
-                    self.chip8.reset();
+                    self.chip8.reset()?;
                 }
                 _ => {}
             }
@@ -130,14 +138,29 @@ impl ChipsteRS {
                 self.chip8.key_down(i);
             }
         }
+
+        Ok(())
     }
 
     pub fn update(&mut self) -> Result<()> {
         match &self.chip8.state {
-            chip8::State::Finished => self.chip8.reset(),
+            chip8::State::Finished => self
+                .chip8
+                .reset()
+                .map_err(|err| anyhow!("Failed to reset: {err}"))?,
             chip8::State::Running => {
-                for _i in 0..10 {
+                let frame_duration = Duration::from_secs_f64(1.0 / 60.0); // 60 Hz display refresh
+                let start = std::time::Instant::now();
+
+                // Run CPU cycles for this frame
+                for _i in 0..get_platform().tick_rate {
                     self.chip8.step()?;
+                }
+
+                // Sleep for remainder of frame if any
+                let elapsed = start.elapsed();
+                if elapsed < frame_duration {
+                    thread::sleep(frame_duration - elapsed);
                 }
             }
             chip8::State::Off => {
@@ -182,8 +205,8 @@ impl ChipsteRS {
 
         let mut color: Color;
 
-        for y in 0..chip8::VIDEO_HEIGHT {
-            for x in 0..chip8::VIDEO_WIDTH {
+        for y in 0..get_platform().video_height {
+            for x in 0..get_platform().video_width {
                 color = if self.chip8.has_color(x, y) {
                     WHITE
                 } else {
@@ -196,7 +219,7 @@ impl ChipsteRS {
         Ok(())
     }
 
-    pub async fn draw(&mut self) {
+    pub async fn draw(&mut self) -> Result<()> {
         clear_background(BLACK);
 
         match self.chip8.state {
@@ -224,13 +247,18 @@ impl ChipsteRS {
                     ..Default::default()
                 },
             ),
-            chip8::State::Finished => self.chip8.reset(),
+            chip8::State::Finished => self
+                .chip8
+                .reset()
+                .map_err(|err| anyhow!("Failed to reset: {err}"))?,
             chip8::State::Off => self.draw_menu(),
         }
 
         self.chip8.reset_keys();
 
         next_frame().await;
+
+        Ok(())
     }
 }
 

@@ -1,3 +1,3 @@
 [workspace]
-members = ["chip8", "chipsters"]
+members = ["crates/chip8", "crates/chipsters"]
 resolver = "2"

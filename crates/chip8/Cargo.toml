@@ -6,4 +6,5 @@ edition = "2021"
 [dependencies]
 log = "0.4.19"
 fastrand = "2.0.1"
-thiserror = "1.0.51"
+thiserror = "2.0.8"
+bitflags = "2.6.0"

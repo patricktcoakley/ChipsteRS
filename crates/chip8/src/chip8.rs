@@ -3,10 +3,10 @@ use std::path::Path;
 use log::info;
 
 use crate::error::ExecutionError;
-use crate::Memory;
+use crate::{get_platform, Memory};
 use crate::State;
 use crate::PROGRAM_START_ADDRESS;
-use crate::{Cpu, VIDEO_WIDTH};
+use crate::Cpu;
 
 #[derive(Debug)]
 pub struct Chip8 {
@@ -42,15 +42,17 @@ impl Chip8 {
             [PROGRAM_START_ADDRESS as usize..(PROGRAM_START_ADDRESS + rom.len() as u16) as usize]
             .copy_from_slice(&rom);
         self.state = State::Running;
+
         Ok(())
     }
 
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self) -> Result<(), ExecutionError> {
         self.cpu = Cpu::new();
         self.cpu
-            .execute(0x00E0, &mut self.memory)
-            .expect("failed to reset video");
+            .execute(0x00E0, &mut self.memory)?;
         self.cpu.pc = PROGRAM_START_ADDRESS;
+
+        Ok(())
     }
 
     pub fn reset_keys(&mut self) {
@@ -60,13 +62,14 @@ impl Chip8 {
     pub fn step(&mut self) -> Result<(), ExecutionError> {
         if self.cpu.pc >= PROGRAM_START_ADDRESS + self.program_size {
             self.state = State::Finished;
+            return Ok(());
         }
 
         if self.state != State::Running {
             return Ok(());
         }
 
-        let opcode = self.opcode();
+        let opcode = self.opcode()?;
         self.cpu.execute(opcode, &mut self.memory)?;
 
         if self.cpu.dt > 0 {
@@ -79,17 +82,22 @@ impl Chip8 {
 
         Ok(())
     }
+
     pub fn key_down(&mut self, i: usize) {
         self.memory.keypad[i] = true;
     }
 
-    pub fn has_color(&self, x: u8, y: u8) -> bool {
-        self.memory.video[(y as usize * VIDEO_WIDTH as usize) + x as usize] == 0x1
+    pub fn has_color(&self, x: u16, y: u16) -> bool {
+        self.memory.video[(y as usize * get_platform().video_width as usize) + x as usize] == 0x1
     }
 
-    fn opcode(&self) -> u16 {
-        u16::from(self.memory.ram[self.cpu.pc as usize]) << 8
-            | u16::from(self.memory.ram[(self.cpu.pc + 1) as usize])
+    fn opcode(&self) -> Result<u16, ExecutionError> {
+        if (self.cpu.pc as usize + 1) >= self.memory.ram.len() {
+            return Err(ExecutionError::InvalidOpcode(self.cpu.pc));
+        }
+
+        Ok(u16::from(self.memory.ram[self.cpu.pc as usize]) << 8
+            | u16::from(self.memory.ram[(self.cpu.pc + 1) as usize]))
     }
 }
 

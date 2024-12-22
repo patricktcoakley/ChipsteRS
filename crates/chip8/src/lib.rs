@@ -1,16 +1,14 @@
 use crate::platform::Platform;
 pub use chip8::Chip8;
-use cpu::Cpu;
-use memory::Memory;
 pub use state::State;
 use std::sync::OnceLock;
+use virtual_machine::VirtualMachine;
 
 pub mod chip8;
-mod cpu;
 mod error;
-mod memory;
-pub mod state;
 mod platform;
+pub mod state;
+mod virtual_machine;
 
 pub const CHAR_SIZE: u8 = 0x5;
 pub const PROGRAM_START_ADDRESS: u16 = 0x200;

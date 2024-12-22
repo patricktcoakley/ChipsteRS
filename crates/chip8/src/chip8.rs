@@ -3,24 +3,21 @@ use std::path::Path;
 use log::info;
 
 use crate::error::ExecutionError;
-use crate::{get_platform, Memory};
 use crate::State;
 use crate::PROGRAM_START_ADDRESS;
-use crate::Cpu;
+use crate::{get_platform, VirtualMachine};
 
 #[derive(Debug)]
 pub struct Chip8 {
     pub state: State,
-    memory: Memory,
-    cpu: Cpu,
+    vm: VirtualMachine,
     program_size: u16,
 }
 
 impl Chip8 {
     pub fn new() -> Self {
         Self {
-            memory: Memory::new(),
-            cpu: Cpu::new(),
+            vm: VirtualMachine::new(),
             state: State::Off,
             program_size: 0,
         }
@@ -38,7 +35,7 @@ impl Chip8 {
         }
 
         info!("Loading {}", rom_path.display());
-        self.memory.ram
+        self.vm.ram
             [PROGRAM_START_ADDRESS as usize..(PROGRAM_START_ADDRESS + rom.len() as u16) as usize]
             .copy_from_slice(&rom);
         self.state = State::Running;
@@ -47,20 +44,20 @@ impl Chip8 {
     }
 
     pub fn reset(&mut self) -> Result<(), ExecutionError> {
-        self.cpu = Cpu::new();
-        self.cpu
-            .execute(0x00E0, &mut self.memory)?;
-        self.cpu.pc = PROGRAM_START_ADDRESS;
+        self.vm = VirtualMachine::new();
+        self.vm
+            .execute(0x00E0)?;
+        self.vm.pc = PROGRAM_START_ADDRESS;
 
         Ok(())
     }
 
     pub fn reset_keys(&mut self) {
-        self.memory.keypad = [false; 16];
+        self.vm.keypad = [false; 16];
     }
 
     pub fn step(&mut self) -> Result<(), ExecutionError> {
-        if self.cpu.pc >= PROGRAM_START_ADDRESS + self.program_size {
+        if self.vm.pc >= PROGRAM_START_ADDRESS + self.program_size {
             self.state = State::Finished;
             return Ok(());
         }
@@ -70,34 +67,34 @@ impl Chip8 {
         }
 
         let opcode = self.opcode()?;
-        self.cpu.execute(opcode, &mut self.memory)?;
+        self.vm.execute(opcode)?;
 
-        if self.cpu.dt > 0 {
-            self.cpu.dt -= 1;
+        if self.vm.dt > 0 {
+            self.vm.dt -= 1;
         }
 
-        if self.cpu.st > 0 {
-            self.cpu.st -= 1;
+        if self.vm.st > 0 {
+            self.vm.st -= 1;
         }
 
         Ok(())
     }
 
     pub fn key_down(&mut self, i: usize) {
-        self.memory.keypad[i] = true;
+        self.vm.keypad[i] = true;
     }
 
     pub fn has_color(&self, x: u16, y: u16) -> bool {
-        self.memory.video[(y as usize * get_platform().video_width as usize) + x as usize] == 0x1
+        self.vm.video[(y as usize * get_platform().video_width as usize) + x as usize] == 0x1
     }
 
     fn opcode(&self) -> Result<u16, ExecutionError> {
-        if (self.cpu.pc as usize + 1) >= self.memory.ram.len() {
-            return Err(ExecutionError::InvalidOpcode(self.cpu.pc));
+        if (self.vm.pc as usize + 1) >= self.vm.ram.len() {
+            return Err(ExecutionError::InvalidOpcode(self.vm.pc));
         }
 
-        Ok(u16::from(self.memory.ram[self.cpu.pc as usize]) << 8
-            | u16::from(self.memory.ram[(self.cpu.pc + 1) as usize]))
+        Ok(u16::from(self.vm.ram[self.vm.pc as usize]) << 8
+            | u16::from(self.vm.ram[(self.vm.pc + 1) as usize]))
     }
 }
 

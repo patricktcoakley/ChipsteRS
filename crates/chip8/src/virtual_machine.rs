@@ -86,8 +86,8 @@ impl VirtualMachine {
             (0x8, _, _, 0x4) => self.op_8xy4(x, y),
             (0x8, _, _, 0x5) => self.op_8xy5(x, y),
             (0x8, _, _, 0x6) => self.op_8xy6(platform, x, y),
-            (0x8, _, _, 0x7) => self.op_8xy7( x, y),
-            (0x8, _, _, 0xE) => self.op_8xye(platform,x, y),
+            (0x8, _, _, 0x7) => self.op_8xy7(x, y),
+            (0x8, _, _, 0xE) => self.op_8xye(platform, x, y),
             (0x9, _, _, 0x0) => self.op_9xy0(x, y),
             (0xA, _, _, _) => self.op_annn(nnn),
             (0xB, _, _, _) => self.op_bnnn(nnn),
@@ -271,7 +271,7 @@ impl VirtualMachine {
         self.sne();
     }
 
-    fn op_8xye(&mut self,  platform: &Platform,x: usize, y: usize) {
+    fn op_8xye(&mut self, platform: &Platform, x: usize, y: usize) {
         debug!("8XYE - SHL Vx - Set Vx = Vx SHL 1");
 
         if !platform.has_quirk(Quirks::SHIFT) {
@@ -319,7 +319,7 @@ impl VirtualMachine {
         self.sne();
     }
 
-    fn op_dxyn(&mut self,  platform: &Platform,x: usize, y: usize, n: u16) {
+    fn op_dxyn(&mut self, platform: &Platform, x: usize, y: usize, n: u16) {
         debug!("DXYN: DRW Vx, Vy, nibble - Display n-byte sprite starting at I to coordinates (Vx, Vy), Set VF = collision");
 
         let mut collision = 0;
@@ -340,7 +340,7 @@ impl VirtualMachine {
                     {
                         continue;
                     }
-                    
+
                     let pixel_pos = (y_pos * video_width + x_pos) as usize;
                     collision |= self.video[pixel_pos] & 1;
                     self.video[pixel_pos] ^= 1;
@@ -501,7 +501,7 @@ impl VirtualMachine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_00e0() {
         let mut vm = VirtualMachine::new();
@@ -730,8 +730,8 @@ mod tests {
         let expected_result = vm.registers[x] >> 1;
         let expected_vf = vm.registers[x] & 1;
         let platform = Platform::default();
-        
-        vm.op_8xy6(&platform,x, x);
+
+        vm.op_8xy6(&platform, x, x);
 
         assert_eq!(expected_result, vm.registers[x]);
         assert_eq!(expected_vf, vm.registers[0xF]);

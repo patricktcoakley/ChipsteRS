@@ -3,21 +3,23 @@ use std::path::Path;
 use log::info;
 
 use crate::error::ExecutionError;
-use crate::State;
+use crate::VirtualMachine;
 use crate::PROGRAM_START_ADDRESS;
-use crate::{get_platform, VirtualMachine};
+use crate::{Platform, State};
 
 #[derive(Debug)]
 pub struct Chip8 {
     pub state: State,
+    pub platform: Platform,
     vm: VirtualMachine,
     program_size: u16,
 }
 
 impl Chip8 {
-    pub fn new() -> Self {
+    pub fn new(platform: Platform) -> Self {
         Self {
             vm: VirtualMachine::new(),
+            platform,
             state: State::Off,
             program_size: 0,
         }
@@ -46,7 +48,7 @@ impl Chip8 {
     pub fn reset(&mut self) -> Result<(), ExecutionError> {
         self.vm = VirtualMachine::new();
         self.vm
-            .execute(0x00E0)?;
+            .execute(0x00E0, &self.platform)?;
         self.vm.pc = PROGRAM_START_ADDRESS;
 
         Ok(())
@@ -67,7 +69,7 @@ impl Chip8 {
         }
 
         let opcode = self.opcode()?;
-        self.vm.execute(opcode)?;
+        self.vm.execute(opcode, &self.platform)?;
 
         if self.vm.dt > 0 {
             self.vm.dt -= 1;
@@ -85,7 +87,7 @@ impl Chip8 {
     }
 
     pub fn has_color(&self, x: u16, y: u16) -> bool {
-        self.vm.video[(y as usize * get_platform().video_width as usize) + x as usize] == 0x1
+        self.vm.video[(y as usize * self.platform.video_width as usize) + x as usize] == 0x1
     }
 
     fn opcode(&self) -> Result<u16, ExecutionError> {
@@ -100,6 +102,6 @@ impl Chip8 {
 
 impl Default for Chip8 {
     fn default() -> Self {
-        Self::new()
+        Self::new(Platform::default())
     }
 }

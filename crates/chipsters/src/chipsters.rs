@@ -6,7 +6,7 @@ use std::thread;
 use std::time::Duration;
 use std::{path::Path, process::exit};
 
-use chip8::{get_platform, init_default_platform, Chip8};
+use chip8::{Chip8};
 
 #[derive(Debug)]
 pub struct ChipsteRS {
@@ -42,12 +42,11 @@ impl ChipsteRS {
     pub fn new() -> Self {
         request_new_screen_size(1200., 600.);
         set_window_size(1200, 600);
-        init_default_platform();
 
         let chip8 = Chip8::default();
         let buffer = Image::gen_image_color(
-            get_platform().video_width,
-            get_platform().video_height,
+            chip8.platform.video_width,
+            chip8.platform.video_height,
             BLACK,
         );
         let texture = Texture2D::from_image(&buffer);
@@ -153,7 +152,7 @@ impl ChipsteRS {
                 let start = std::time::Instant::now();
 
                 // Run CPU cycles for this frame
-                for _i in 0..get_platform().tick_rate {
+                for _i in 0..self.chip8.platform.tick_rate {
                     self.chip8.step()?;
                 }
 
@@ -205,8 +204,8 @@ impl ChipsteRS {
 
         let mut color: Color;
 
-        for y in 0..get_platform().video_height {
-            for x in 0..get_platform().video_width {
+        for y in 0..self.chip8.platform.video_height {
+            for x in 0..self.chip8.platform.video_width {
                 color = if self.chip8.has_color(x, y) {
                     WHITE
                 } else {

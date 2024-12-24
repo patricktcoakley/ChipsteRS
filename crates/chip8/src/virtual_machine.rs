@@ -1,7 +1,7 @@
 use crate::error::ExecutionError;
 use crate::error::ExecutionError::InvalidOpcode;
-use crate::platform::Quirks;
-use crate::{get_platform, CHAR_SIZE, PROGRAM_START_ADDRESS};
+use crate::platform::{Platform, Quirks};
+use crate::{CHAR_SIZE, PROGRAM_START_ADDRESS};
 use log::debug;
 
 const FONTS: [u8; 80] = [
@@ -56,11 +56,11 @@ impl VirtualMachine {
         }
     }
 
-    pub fn rand_byte(&mut self) -> u8 {
+    pub fn rand_byte(&self) -> u8 {
         fastrand::u8(..=u8::MAX)
     }
 
-    pub fn execute(&mut self, opcode: u16) -> Result<(), ExecutionError> {
+    pub fn execute(&mut self, opcode: u16, platform: &Platform) -> Result<(), ExecutionError> {
         let c = (opcode & 0xF000) >> 12;
         let x = ((opcode & 0x0F00) >> 8) as usize;
         let y = ((opcode & 0x00F0) >> 4) as usize;
@@ -85,14 +85,14 @@ impl VirtualMachine {
             (0x8, _, _, 0x3) => self.op_8xy3(x, y),
             (0x8, _, _, 0x4) => self.op_8xy4(x, y),
             (0x8, _, _, 0x5) => self.op_8xy5(x, y),
-            (0x8, _, _, 0x6) => self.op_8xy6(x, y),
-            (0x8, _, _, 0x7) => self.op_8xy7(x, y),
-            (0x8, _, _, 0xE) => self.op_8xye(x, y),
+            (0x8, _, _, 0x6) => self.op_8xy6(platform, x, y),
+            (0x8, _, _, 0x7) => self.op_8xy7( x, y),
+            (0x8, _, _, 0xE) => self.op_8xye(platform,x, y),
             (0x9, _, _, 0x0) => self.op_9xy0(x, y),
             (0xA, _, _, _) => self.op_annn(nnn),
             (0xB, _, _, _) => self.op_bnnn(nnn),
             (0xC, _, _, _) => self.op_cxkk(x, nn),
-            (0xD, _, _, _) => self.op_dxyn(x, y, d),
+            (0xD, _, _, _) => self.op_dxyn(platform, x, y, d),
             (0xE, _, 0x9, 0xE) => self.op_ex9e(x),
             (0xE, _, 0xA, 0x1) => self.op_exa1(x),
             (0xF, _, 0x0, 0x7) => self.op_fx07(x),
@@ -246,10 +246,10 @@ impl VirtualMachine {
         self.sne();
     }
 
-    fn op_8xy6(&mut self, x: usize, y: usize) {
+    fn op_8xy6(&mut self, platform: &Platform, x: usize, y: usize) {
         debug!("8XY6: SHR Vx - Set Vx = Vx SHR 1");
 
-        if !get_platform().has_quirk(Quirks::SHIFT) {
+        if !platform.has_quirk(Quirks::SHIFT) {
             self.registers[x] = self.registers[y];
         }
 
@@ -271,10 +271,10 @@ impl VirtualMachine {
         self.sne();
     }
 
-    fn op_8xye(&mut self, x: usize, y: usize) {
+    fn op_8xye(&mut self,  platform: &Platform,x: usize, y: usize) {
         debug!("8XYE - SHL Vx - Set Vx = Vx SHL 1");
 
-        if !get_platform().has_quirk(Quirks::SHIFT) {
+        if !platform.has_quirk(Quirks::SHIFT) {
             self.registers[x] = self.registers[y];
         }
 
@@ -319,11 +319,11 @@ impl VirtualMachine {
         self.sne();
     }
 
-    fn op_dxyn(&mut self, x: usize, y: usize, n: u16) {
+    fn op_dxyn(&mut self,  platform: &Platform,x: usize, y: usize, n: u16) {
         debug!("DXYN: DRW Vx, Vy, nibble - Display n-byte sprite starting at I to coordinates (Vx, Vy), Set VF = collision");
 
         let mut collision = 0;
-        let (video_width, video_height) = (get_platform().video_width, get_platform().video_height);
+        let (video_width, video_height) = (platform.video_width, platform.video_height);
         let vx = self.registers[x] as u16 % video_width;
         let vy = self.registers[y] as u16 % video_height;
 
@@ -335,7 +335,7 @@ impl VirtualMachine {
                     let x_pos = vx + display_x;
                     let y_pos = vy + display_y;
 
-                    if !get_platform().has_quirk(Quirks::WRAP) && x_pos >= video_width
+                    if !platform.has_quirk(Quirks::WRAP) && x_pos >= video_width
                         || y_pos >= video_height
                     {
                         continue;
@@ -501,16 +501,7 @@ impl VirtualMachine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::init_default_platform;
-    use std::sync::Once;
-
-    static INIT: Once = Once::new();
-
-    fn setup() {
-        INIT.call_once(|| {
-            init_default_platform();
-        });
-    }
+    
     #[test]
     fn test_00e0() {
         let mut vm = VirtualMachine::new();
@@ -733,14 +724,14 @@ mod tests {
 
     #[test]
     fn test_8xy6() {
-        setup();
         let mut vm = VirtualMachine::new();
         let x = 0xD;
         vm.registers[x] = 0xF;
         let expected_result = vm.registers[x] >> 1;
         let expected_vf = vm.registers[x] & 1;
-
-        vm.op_8xy6(x, x);
+        let platform = Platform::default();
+        
+        vm.op_8xy6(&platform,x, x);
 
         assert_eq!(expected_result, vm.registers[x]);
         assert_eq!(expected_vf, vm.registers[0xF]);
@@ -764,14 +755,14 @@ mod tests {
 
     #[test]
     fn test_8xye() {
-        setup();
         let mut vm = VirtualMachine::new();
         let x = 0xD;
         vm.registers[x] = 0xF;
         let expected_result = vm.registers[x] << 1;
         let expected_vf = (vm.registers[x] & 0x80) >> 7;
+        let platform = Platform::default();
 
-        vm.op_8xye(x, x);
+        vm.op_8xye(&platform, x, x);
 
         assert_eq!(expected_result, vm.registers[x]);
         assert_eq!(expected_vf, vm.registers[0xF]);
@@ -836,13 +827,13 @@ mod tests {
 
     #[test]
     fn test_op_dxyn() {
-        setup();
         let mut vm = VirtualMachine::new();
         vm.i = 0x200;
         vm.ram[vm.i as usize] = 0x1;
         vm.video[0x7] = 0x1;
+        let platform = Platform::default();
 
-        vm.op_dxyn(0, 0, 1);
+        vm.op_dxyn(&platform, 0, 0, 1);
 
         assert_eq!(0x0, vm.video[0x7]);
         assert_eq!(0x1, vm.registers[0xF]);
